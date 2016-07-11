@@ -6,12 +6,16 @@ from __future__ import print_function
 import os
 import sys
 import cv2
+import shutil
 import argparse
+import multiprocessing
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, dirname, realpath, join
+from multiprocessing import Pool
 
 
 directory = None
+script_path = dirname(realpath(__file__))
 
 
 class ReadableDirectory(argparse.Action):
@@ -29,8 +33,7 @@ def process_images(file):
     has_faces = False
     try:
         # load in the classifier for face detection
-        # face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-        face_cascade = cv2.CascadeClassifier('/home/jonathan/Documents/cloudguard/external/opencv/data/haarcascades/haarcascade_frontalface_default.xml')
+        face_cascade = cv2.CascadeClassifier(join(script_path, 'haarcascade_frontalface_default.xml'))
         # read in the image
         img = cv2.imread(file)
         # make a grayscale version of the image
@@ -38,8 +41,8 @@ def process_images(file):
         # detect the faces in the image
         faces = face_cascade.detectMultiScale(
             gray,
-            scaleFactor=1.13,
-            minNeighbors=5,
+            scaleFactor=1.125,
+            minNeighbors=4,
             minSize=(40, 40),
             flags=cv2.cv.CV_HAAR_SCALE_IMAGE
         )
@@ -47,7 +50,7 @@ def process_images(file):
         for face in faces:
             has_faces = True
         if has_faces:
-            print('detection at \'{}\''.format(file))
+            print('detected in \'{}\''.format(file))
     except:
         print('Unexpected error processing \'{}\':'.format(file, sys.exc_info()[0]))
 
@@ -60,10 +63,7 @@ def process_images(file):
 def main(args):
     """Main wrapper function.
     """
-    from multiprocessing import Pool
-    import shutil
-
-    pool = Pool(processes=4)
+    pool = Pool(processes=multiprocessing.cpu_count())
 
     storage_path = os.path.abspath(args.output)
     if storage_path == os.getcwd():
@@ -82,7 +82,7 @@ def main(args):
         if detected:
             shutil.copy2(file, join(file, storage_path))
 
-    print('done\n{}/{} images with face detections'.format(num_detection_files, len(files)))
+    print('done\n{}/{} images with face(s) detected'.format(num_detection_files, len(files)))
 
 
 if __name__ == '__main__':
